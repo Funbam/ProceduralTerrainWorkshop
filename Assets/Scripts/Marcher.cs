@@ -9,8 +9,6 @@ public enum Mode
 {
     Standard,
     Plane,
-    Cave,
-    Ball
 }
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
@@ -19,7 +17,7 @@ public class Marcher : MonoBehaviour
     [SerializeField] float noisePower;
     [SerializeField] int dimension;
     [SerializeField] bool drawGizmos;
-    float[,,] heightNodes;
+    float[,,] gridNodes;
     [SerializeField] float heightThreshold = 0.05f;
     [SerializeField] Vector3 noiseOffset;
     [SerializeField] Mode mode;
@@ -32,6 +30,174 @@ public class Marcher : MonoBehaviour
 
     private List<Vector3> vertices = new List<Vector3>();
     private List<int> triangleIndices = new List<int>();
+
+
+
+
+    //Theory: Generate a heightmap for each (XZ) pair and mark how close each Y step is to the generated "threshold"
+    //This will be used later on to determine the "activated" corners of the marched cube
+    //Corners close to the heightmap (ie values to 0) are considered activated
+
+
+    //YOU WILL BE FILLING OUT THIS FUNCTION
+    //YOU WILL BE FILLING OUT THIS FUNCTION
+    //YOU WILL BE FILLING OUT THIS FUNCTION
+    void SetGrid()
+    {
+        gridNodes = new float[dimension + 1, dimension + 1, dimension + 1];
+
+        for (int x = 0; x < dimension + 1; x++)
+        {
+            for (int y = 0; y < dimension + 1; y++)
+            {
+                for (int z = 0; z < dimension + 1; z++)
+                {
+                    float generatedValue = 0;
+                    //TODO: How shall we determine how to generate the value of any given point?
+                    //Hint: you may want to use perlin noise!
+                    //generatedValue = ???????
+
+
+                    float finalDist;
+
+                    switch (mode)
+                    {
+                        //TODO Implement Standard (assign the value as raw noise)
+                        case Mode.Standard:
+                            //gridNodes[x, y, z] = ?????????
+                            break;
+                        //TODO Implement Plane (group up similar values along a rough Y value)
+                        //Hint: With 2D noise, every point with a given X and Z always maps to the same noise value
+                        //How can we use the Y coordinate to generate a gradient?
+                        case Mode.Plane:
+                            //gridNodes[x, y, z] = ?????
+                            break;
+                        //Error
+                        default:
+                            Debug.LogError("Error, nonexistent mode!");
+                            break;
+                    }
+
+
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
+     * void SetGrid()
+    {
+        gridNodes = new float[dimension + 1, dimension + 1, dimension + 1];
+
+        for (int x = 0; x < dimension + 1; x++)
+        {
+            for (int y = 0; y < dimension + 1; y++)
+            {
+                for (int z = 0; z < dimension + 1; z++)
+                {
+                    //Each (X,Z) coordinate pair has a set height determinted by the perlin noise
+                    float height = Mathf.PerlinNoise(x * noisePower + noiseOffset.x, z * noisePower + noiseOffset.z) * dimension;
+
+                    if (ThreeD)
+                    {
+                        height = Noise3D(noisePower * x + noiseOffset.x, noisePower * y + noiseOffset.x, noisePower * z + noiseOffset.z) * dimension;
+                    }
+
+                    //Set borders to air to prevent cutoff
+                    if (preventDropoff && (x == 0 || x == dimension || y == 0 || y == dimension || z == 0 || z == dimension))
+                    {
+                        gridNodes[x, y, z] = 10;
+                        continue;
+                    }
+
+                    float finalDist;
+
+                    switch (mode)
+                    {
+                        //Standard mode that uses pure noise scaled from -1 to 1
+                        case Mode.Standard:
+                            gridNodes[x, y, z] = height / dimension;
+                            break;
+                        //Plane mode that assigns in respect to y position to make vertical bands of vaLues
+                        case Mode.Plane:
+                            finalDist = y - height;
+                            gridNodes[x, y, z] = finalDist / dimension;
+                            break;
+                        //Error
+                        default:
+                            Debug.LogError("Error, nonexistent mode!");
+                            break;
+                    }
+
+
+                }
+            }
+        }
+    }
+     */
+
+
+
+
+
+
+
 
     //Reads settings from config SO
     void Setup()
@@ -56,7 +222,7 @@ public class Marcher : MonoBehaviour
             meshFilter = GetComponent<MeshFilter>();
             meshCollider = GetComponent<MeshCollider>();
         }
-        SetHeights();
+        SetGrid();
         March();
         SetMesh();
     }
@@ -64,7 +230,7 @@ public class Marcher : MonoBehaviour
     //A function to help visualize the iso field
     private void OnDrawGizmosSelected()
     {
-        if (!drawGizmos || !Application.isPlaying || heightNodes == null || heightNodes.Length <= 0)
+        if (!drawGizmos || !Application.isPlaying || gridNodes == null || gridNodes.Length <= 0)
         {
             return;
         }
@@ -75,7 +241,7 @@ public class Marcher : MonoBehaviour
             {
                 for (int z = 1; z < dimension; z++)
                 {
-                    Gizmos.color = new Color(heightNodes[x, y, z], heightNodes[x, y, z], heightNodes[x, y, z], 1);
+                    Gizmos.color = new Color(gridNodes[x, y, z], gridNodes[x, y, z], gridNodes[x, y, z], 1);
                     Gizmos.DrawSphere(new Vector3(x, y, z), 0.2f);
                 }
             }
@@ -139,8 +305,8 @@ public class Marcher : MonoBehaviour
                     Vector3Int startCorner = new Vector3Int((int)edgeStart.x, (int)edgeStart.y, (int)edgeStart.z);
                     Vector3Int endCorner = new Vector3Int((int)edgeEnd.x, (int)edgeEnd.y, (int)edgeEnd.z);
 
-                    float valueStart = heightNodes[startCorner.x, startCorner.y, startCorner.z];
-                    float valueEnd = heightNodes[endCorner.x, endCorner.y, endCorner.z];
+                    float valueStart = gridNodes[startCorner.x, startCorner.y, startCorner.z];
+                    float valueEnd = gridNodes[endCorner.x, endCorner.y, endCorner.z];
 
                     float t = (heightThreshold - valueStart) / (valueEnd - valueStart);
 
@@ -187,7 +353,7 @@ public class Marcher : MonoBehaviour
                         //Note that a cube is defined with one corner at the local origin (x,y,z) and the opposite corner at (x+1, y+1, z+1)
                         //We use vector3int to make sure we dont have to cast to int to index
                         Vector3Int corner = new Vector3Int(x, y, z) + MarchingTable.Corners[i];
-                        cornerValues[i] = heightNodes[corner.x, corner.y, corner.z];
+                        cornerValues[i] = gridNodes[corner.x, corner.y, corner.z];
                     }
                     int config = GetConfigIndex(cornerValues);
                     //Performs the march at this cube
@@ -213,94 +379,6 @@ public class Marcher : MonoBehaviour
 
         meshFilter.mesh = mesh;
         meshCollider.sharedMesh = mesh;
-    }
-
-    //Theory: Generate a heightmap for each (XZ) pair and mark how close each Y step is to the generated "height"
-    //This will be used later on to determine the "activated" corners of the marched cube
-    //Corners close to the heightmap (ie values to 0) are considered activated
-
-    //If you want more crazy terrain rather than continous sheetlike terrain, use 3D perlin noise
-    //This means that the height is dependent on both XYZ which can create wild results
-    void SetHeights()
-    {
-        //This is plus 1 because a single cube uses 2 points to form an edge, so you need 1 + the number of cubes corners
-        heightNodes = new float[dimension + 1, dimension + 1, dimension + 1];
-
-        for (int x = 0; x < dimension + 1; x++)
-        {
-            for (int y = 0; y < dimension + 1; y++)
-            {
-                for (int z = 0; z < dimension + 1; z++)
-                {
-                    //Each (X,Z) coordinate pair has a set height determinted by the perlin noise
-                    float height = Mathf.PerlinNoise(x * noisePower + noiseOffset.x, z * noisePower + noiseOffset.z) * dimension;
-
-                    if (ThreeD)
-                    {
-                        height = Noise3D(noisePower * x + noiseOffset.x, noisePower * y + noiseOffset.x, noisePower * z + noiseOffset.z) * dimension;
-                    }
-
-                    //Set borders to air to prevent cutoff
-                    if(preventDropoff && (x==0 || x == dimension || y == 0 || y == dimension || z == 0 || z == dimension))
-                    {
-                        heightNodes[x, y, z] = 10;
-                        continue;
-                    }
-
-                    float finalDist;
-
-                    switch (mode)
-                    {
-                        //Standard mode that uses pure noise scaled from -1 to 1
-                        case Mode.Standard:
-                            heightNodes[x, y, z] = height / dimension;
-                            break;
-                        //Plane mode that assigns in respect to y position to make vertical bands of vaLues
-                        case Mode.Plane:
-                            finalDist = y - height;
-                            heightNodes[x, y, z] = finalDist / dimension;
-                            break;
-                      //Cave mode that defines a noisy sphere centered in the grid and creates a gradient field increasing in value as you move inwards
-                        case Mode.Cave:
-
-                            float center = dimension / 2;
-                            float dx = x - center;
-                            float dy = y - center;
-                            float dz = z - center;
-
-                            finalDist = Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
-                            float radius = dimension / 2f;
-                            float bounds = heightThreshold * dimension + height / dimension * heightThreshold * dimension;
-
-                            float res = (bounds - finalDist) / dimension;
-                            heightNodes[x, y, z] = res;
-                            break;
-
-                        //Ball mode that defines a noisy sphere centered in the grid and creates a gradient field increasing in value as you move inwards
-                        case Mode.Ball:
-
-                            center = dimension / 2;
-                            dx = x - center;
-                            dy = y - center;
-                            dz = z - center;
-                            finalDist = Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
-
-                            bounds = heightThreshold*dimension + height/dimension * heightThreshold * dimension;
-
-                            res = (finalDist - bounds) / dimension;
-                            heightNodes[x, y, z] = res;
-                            break;
-
-                        //Error
-                        default:
-                            Debug.LogError("Error, nonexistent mode!");
-                            break;
-                    }
-
-
-                }
-            }
-        }
     }
 
     //3D noise by averaging all permutations
